@@ -2,17 +2,17 @@
   <div class="back fill-height">
     <v-container justify-center fluid fill-height>
       <v-row justify="center">
-        <v-col cols="4">
+        <v-col cols="12" md="4">
           <v-card>
             <v-tabs
               color="deep-purple accent-4"
               background-color="primary"
               left
             >
-               <v-tab class="white--text" >SIGN IN</v-tab>
+              <v-tab class="white--text">SIGN IN</v-tab>
               <v-tab class="white--text">SIGN UP</v-tab>
               <v-tab-item>
-                <v-card class="mx-auto elevation-12 midcard Blured">
+                <v-card class="mx-auto elevation-12 midcard">
                   <v-card-text class="blured">
                     <v-form
                       v-model="valid"
@@ -24,7 +24,7 @@
                         name="nameemail"
                         label="Email / Username"
                         type="text"
-                        v-model="nameemail"
+                        v-model="user.nameemail"
                         :rules="nameemailRules"
                         required
                       ></v-text-field>
@@ -34,26 +34,29 @@
                         id="password"
                         type="password"
                         required
-                        v-model="password"
+                        v-model="user.password"
                         :rules="passwordRules"
                       ></v-text-field>
                     </v-form>
                   </v-card-text>
                   <v-card-actions class="flex-column">
                     <v-spacer></v-spacer>
-                    <v-btn color="primary" @click="validate">Login</v-btn>
+                    <v-btn color="primary" @click="loginUserInfo"
+                      >Login</v-btn
+                    >
+                    <router-link ref="redirect" :to="$route.query.redirect ? $route.query.redirect : '/'"></router-link>
                   </v-card-actions>
                 </v-card>
               </v-tab-item>
               <v-tab-item>
                 <v-card class="mx-auto elevation-12 midcard Blured">
                   <v-card-text class="pa-12">
-                    <v-form ref="form" class=" py-2 pb-6">
+                    <v-form ref="form" class="py-2 pb-6">
                       <v-text-field
                         name="name"
                         label="Username"
                         type="text"
-                        v-model="name"
+                        v-model="user.name"
                         :counter="20"
                         :rules="nameRules"
                         required
@@ -63,16 +66,17 @@
                         label="Email"
                         type="email"
                         required
-                        v-model="email"
+                        v-model="user.email"
                         :rules="emailRules"
                       ></v-text-field>
-                      <v-text-field class="pb-4"
+                      <v-text-field
+                        class="pb-4"
                         name="password"
                         label="Password"
                         id="password"
                         type="password"
                         required
-                        v-model="password"
+                        v-model="user.password"
                         :rules="passwordRules"
                       ></v-text-field>
                       <v-select
@@ -80,7 +84,8 @@
                         name="specialization"
                         label="Specialization"
                         dense
-                        required v-model="select"
+                        required
+                        v-model="user.spec"
                         :rules="[(v) => !!v || 'Specialization is required']"
                       ></v-select>
                       <v-menu
@@ -166,7 +171,7 @@
                       :disabled="!valid"
                       color="success"
                       class="mr-4"
-                      @click="validate"
+                      @click="registerUserInfo"
                     >
                       Sign Up
                     </v-btn>
@@ -192,11 +197,15 @@ export default {
   name: "Home",
   components: {},
   data: () => ({
+    user: {
+      email: '',
+      password: '',
+    },
     valid: false,
     nameemail: "",
     nameemailRules: [
       (v) => !!v || "Username/Email is required",
-      (v) => (v && v.length <= 20) || "Name must be less than 10 characters",
+      (v) => (v && v.length <= 50) || "Name must be less than 50 characters",
     ],
     name: "",
     nameRules: [
@@ -215,13 +224,17 @@ export default {
       (v) => !!v || "E-mail is required",
       (v) => /.+@.+\..+/.test(v) || "E-mail must be valid",
     ],
-    checkbox: false, 
+    checkbox: false,
     date: new Date().toISOString().substr(0, 10),
     date2: new Date().toISOString().substr(0, 10),
     menu: false,
     menu2: false,
-    
   }),
+  mounted () {
+    const self = this
+
+    self.getCommunities()
+  },
   methods: {
     validate() {
       this.$refs.form.validate();
@@ -229,15 +242,71 @@ export default {
     reset() {
       this.$refs.form.reset();
     },
+    loginUserInfo() {
+      const self = this;
+      self.validate()
+      self.axios
+        .get(
+          `/users/signin/${self.user.nameemail}/${self.user.password}`
+        )
+        .then((res)  => {
+          self.user = res.data;
+          if (self.user.id == -1) {
+            alert('wong credentials')
+            self.$store.commit('logout')
+          } else {
+            // Logged In Successfully
+            self.$store.commit('login', res.data)
+            self.$refs.redirect.$el.click()
+          }
+        }).catch((e) => {
+          alert('something went wrong')
+          self.$store.commit('logout')
+          console.log(e)
+        })
+    },
+    registerUserInfo() {
+      const self = this;
+      self.validate()
+      
+      const info = {
+        name: self.user.name,
+        email: self.user.email,
+        password: self.user.password,
+        university: self.user.university,
+        img: self.user.img,
+        community_name: self.user.spec,
+        study_year: self.user.study_year,
+        start_year: self.user.start_year,
+        age: self.user.age,
+      };
+
+      self.axios
+        .post("/users/register", info)
+        .then(async (res) => {
+          if (self.user.id == -1) {
+            alert('wong credentials')
+            self.$store.commit('logout')
+          } else {
+            // Logged In Successfully
+            self.$store.commit('login', res.data)
+            self.$refs.redirect.$el.click()
+
+          }
+        });
+    },
+    getCommunities () {
+      const self = this
+
+      self.axios.get('/community/getCommunities').then((res) => {
+        self.specialization = res.data.map((t) => t.name)
+      })
+    }
   },
 };
 </script>
 
-<style>
-.Blured {
-  backdrop-filter: blur(3px);
-  background: rgba(255, 255, 255, 0.7);
-}
+<style scoped>
 .colortab {
   color: #43425d !important ;
 }
@@ -248,10 +317,15 @@ export default {
   background-image: url("~@/assets/LoginBackground.jpeg");
   background-size: cover;
   width: 100%;
+  position: relative;
 }
-
-.blured {
+.back::before {
+  content: '';
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0);
   backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.7);
 }
 </style>

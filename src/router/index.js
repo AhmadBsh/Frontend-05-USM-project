@@ -1,31 +1,49 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Community from '../views/Community.vue'
-import Login from '../views/Login.vue'
+import store from '../plugins/store'
+
 
 
 Vue.use(VueRouter)
 
 const routes = [
   {
+    // w
     path: '/',
     name: 'Community',
     component: Community
   },
-  
+
   {
     path: '/boards',
     name: 'Boards',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/Boards.vue')
+    component: () => import('../views/Boards.vue')
   },
-  
   {
-  path: '/login',
-  name: 'Login',
-  component: Login
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Profile.vue')
+  },
+  {
+    path: '/chatroom',
+    name: 'ChatRoom',
+    component: () => import('../views/ChatRoom.vue')
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue')
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/Settings.vue')
+  },
+  {
+    path: '/search',
+    name: 'Search',
+    component: () => import('../views/Search.vue')
   }
 ]
 
@@ -35,4 +53,13 @@ const router = new VueRouter({
   routes
 })
 
+router.beforeEach((to, from, next) => {
+  if (to.name !== 'Login' && !store.state.user) {
+    to = ({ name: 'Login', query: { redirect: to.path } })
+    next(to)
+  }
+  else next()
+})
+
 export default router
+
